@@ -1527,6 +1527,16 @@ void ElectronBrowserClient::RegisterBrowserInterfaceBindersForFrame(
 #endif
 }
 
+content::WebContentsViewDelegate*
+ElectronBrowserClient::GetWebContentsViewDelegate(
+    content::WebContents* web_contents) {
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  v8::HandleScope scope(isolate);
+  api::WebContents::FromOrCreate(isolate, web_contents);
+  return content::ContentBrowserClient::GetWebContentsViewDelegate(
+      web_contents);
+}
+
 std::unique_ptr<content::LoginDelegate>
 ElectronBrowserClient::CreateLoginDelegate(
     const net::AuthChallengeInfo& auth_info,
