@@ -29,7 +29,9 @@ function sanitizeOptionsForGuest (options: Record<string, any>) {
 }
 
 // Create a new guest instance.
-const createGuest = function (embedder: Electron.WebContents, params: Record<string, any>) {
+const createGuest = function (event: Electron.IpcMainInvokeEvent,
+  embedderFrameId: number, elementInstanceId: number, params: Record<string, any>) {
+  const embedder = event.sender;
   // eslint-disable-next-line no-undef
   const guest = (webContents as typeof ElectronInternal.WebContents).create({
     type: 'webview',
@@ -113,7 +115,11 @@ const createGuest = function (embedder: Electron.WebContents, params: Record<str
     }
   });
 
-  return guestInstanceId;
+  if (attachGuest(event, embedderFrameId, elementInstanceId, guestInstanceId, params)) {
+    return guestInstanceId;
+  }
+
+  return -1;
 };
 
 // Attach the guest to an element of embedder.
@@ -126,7 +132,7 @@ const attachGuest = function (event: Electron.IpcMainInvokeEvent,
   if (oldGuestInstanceId != null) {
     // Reattachment to the same guest is just a no-op.
     if (oldGuestInstanceId === guestInstanceId) {
-      return;
+      return false;
     }
 
     const oldGuestInstance = guestInstances[oldGuestInstanceId];
@@ -138,11 +144,13 @@ const attachGuest = function (event: Electron.IpcMainInvokeEvent,
   const guestInstance = guestInstances[guestInstanceId];
   // If this isn't a valid guest instance then do nothing.
   if (!guestInstance) {
-    throw new Error(`Invalid guestInstanceId: ${guestInstanceId}`);
+    console.error(new Error(`Guest attach failed: Invalid guestInstanceId ${guestInstanceId}`));
+    return false;
   }
   const { guest } = guestInstance;
   if (guest.hostWebContents !== embedder) {
-    throw new Error(`Access denied to guestInstanceId: ${guestInstanceId}`);
+    console.error(new Error(`Guest attach failed: Access denied to guestInstanceId ${guestInstanceId}`));
+    return false;
   }
 
   // If this guest is already attached to an element then remove it
@@ -206,7 +214,7 @@ const attachGuest = function (event: Electron.IpcMainInvokeEvent,
   if (event.defaultPrevented) {
     if (guest.viewInstanceId == null) guest.viewInstanceId = params.instanceId;
     guest.destroy();
-    return;
+    return false;
   }
 
   guest.attachParams = params;
@@ -220,6 +228,7 @@ const attachGuest = function (event: Electron.IpcMainInvokeEvent,
 
   webViewManager.addGuest(guestInstanceId, elementInstanceId, embedder, guest, webPreferences);
   guest.attachToIframe(embedder, embedderFrameId);
+  return true;
 };
 
 // Remove an guest-embedder relationship.
@@ -306,16 +315,8 @@ const handleMessageSync = function (channel: string, handler: (event: ElectronIn
   ipcMainUtils.handleSync(channel, makeSafeHandler(channel, handler));
 };
 
-handleMessage(IPC_MESSAGES.GUEST_VIEW_MANAGER_CREATE_GUEST, function (event, params) {
-  return createGuest(event.sender, params);
-});
-
-handleMessage(IPC_MESSAGES.GUEST_VIEW_MANAGER_ATTACH_GUEST, function (event, embedderFrameId: number, elementInstanceId: number, guestInstanceId: number, params) {
-  try {
-    attachGuest(event, embedderFrameId, elementInstanceId, guestInstanceId, params);
-  } catch (error) {
-    console.error(`Guest attach failed: ${error}`);
-  }
+handleMessage(IPC_MESSAGES.GUEST_VIEW_MANAGER_CREATE_AND_ATTACH_GUEST, function (event, embedderFrameId: number, elementInstanceId: number, params) {
+  return createGuest(event, embedderFrameId, elementInstanceId, params);
 });
 
 handleMessageSync(IPC_MESSAGES.GUEST_VIEW_MANAGER_DETACH_GUEST, function (event, guestInstanceId: number) {
