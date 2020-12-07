@@ -138,6 +138,21 @@ nativeTheme.shouldUseHighContrastColors
 
 ## Planned Breaking API Changes (12.0)
 
+### Removed: `app.allowRendererProcessReuse`
+
+The `app.allowRendererProcessReuse` property will be removed as part of our plan to
+more closely align with Chromium's process model for security, performance and maintainability.
+
+For more detailed information see [#18397](https://github.com/electron/electron/issues/18397).
+
+### Removed: Browser Window Affinity
+
+The `affinity` option when constructing a new `BrowserWindow` will be removed
+as part of our plan to more closely align with Chromium's process model for security,
+performance and maintainability.
+
+For more detailed information see [#18397](https://github.com/electron/electron/issues/18397).
+
 ### Removed: Pepper Flash support
 
 Chromium has removed support for Flash, and so we must follow suit. See
@@ -294,14 +309,6 @@ See [#23265](https://github.com/electron/electron/pull/23265) for more details.
 Setting `{ compress: false }` in `crashReporter.start` is deprecated. Nearly
 all crash ingestion servers support gzip compression. This option will be
 removed in a future version of Electron.
-
-### Removed: Browser Window Affinity
-
-The `affinity` option when constructing a new `BrowserWindow` will be removed
-as part of our plan to more closely align with Chromium's process model for security,
-performance and maintainability.
-
-For more detailed information see [#18397](https://github.com/electron/electron/issues/18397).
 
 ### Default Changed: `enableRemoteModule` defaults to `false`
 
