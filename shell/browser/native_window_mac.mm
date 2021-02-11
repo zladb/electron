@@ -631,7 +631,15 @@ void NativeWindowMac::HandlePendingFullscreenTransitions() {
   SetFullScreen(next_transition);
 }
 
+void NativeWindowMac::SetFullScreenSync(bool fullscreen) {
+  SetFullScreenImpl(fullscreen, false);
+}
+
 void NativeWindowMac::SetFullScreen(bool fullscreen) {
+  SetFullScreenImpl(fullscreen, true);
+}
+
+void NativeWindowMac::SetFullScreenImpl(bool fullscreen, bool async) {
   // [NSWindow -toggleFullScreen] is an asynchronous operation, which means
   // that it's possible to call it while a fullscreen transition is currently
   // in process. This can create weird behavior (incl. phantom windows),
@@ -670,9 +678,13 @@ void NativeWindowMac::SetFullScreen(bool fullscreen) {
   // "not in a fullscreen state" when trying to exit fullscreen in the same
   // runloop that entered it. To handle this, invoke -toggleFullScreen:
   // asynchronously.
-  [window_ performSelector:@selector(toggleFullScreen:)
-                withObject:nil
-                afterDelay:0];
+  if (async) {
+    [window_ performSelector:@selector(toggleFullScreen:)
+                  withObject:nil
+                  afterDelay:0];
+  } else {
+    [window_ toggleFullScreen:nil];
+  }
 }
 
 bool NativeWindowMac::IsFullscreen() const {
@@ -1024,11 +1036,11 @@ void NativeWindowMac::SetKiosk(bool kiosk) {
     is_kiosk_ = true;
     was_fullscreen_ = IsFullscreen();
     if (!was_fullscreen_)
-      SetFullScreen(true);
+      SetFullScreenSync(true);
   } else if (!kiosk && is_kiosk_) {
     is_kiosk_ = false;
     if (!was_fullscreen_)
-      SetFullScreen(false);
+      SetFullScreenSync(false);
     [NSApp setPresentationOptions:kiosk_options_];
   }
 }
